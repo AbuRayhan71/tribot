@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 export default function Home() {
   const [messages, setMessages] = useState([
@@ -8,10 +8,35 @@ export default function Home() {
       id: 1,
       text: "Hello! I'm Tribot, your medical triage assistant. How can I help you today?",
       sender: "bot",
-      timestamp: "Just now" // Fixed: Use static text instead of dynamic time
+      timestamp: ""
     }
   ]);
   const [inputText, setInputText] = useState("");
+  const [isClient, setIsClient] = useState(false);
+
+  // Helper function to get clean timestamp
+  const getCleanTimestamp = () => {
+    const now = new Date();
+    return now.toLocaleTimeString('en-US', {
+      hour12: true,
+      hour: 'numeric',
+      minute: '2-digit',
+      second: '2-digit'
+    });
+  };
+
+  // Fix hydration issue by only generating timestamps on client
+  useEffect(() => {
+    setIsClient(true);
+    setMessages([
+      {
+        id: 1,
+        text: "Hello! I'm Tribot, your medical triage assistant. How can I help you today?",
+        sender: "bot",
+        timestamp: getCleanTimestamp()
+      }
+    ]);
+  }, []);
 
   const sendMessage = () => {
     if (inputText.trim() === "") return;
@@ -21,15 +46,15 @@ export default function Home() {
       id: messages.length + 1,
       text: inputText,
       sender: "user",
-      timestamp: "Just now" // Fixed: Use static text
+      timestamp: getCleanTimestamp()
     };
 
-    // Simple bot response (we'll make this smarter later)
+    // Simple bot response
     const botResponse = {
       id: messages.length + 2,
       text: "Thank you for your message. I'm analyzing your symptoms. Can you tell me more about how you're feeling?",
       sender: "bot",
-      timestamp: "Just now" // Fixed: Use static text
+      timestamp: getCleanTimestamp()
     };
 
     setMessages([...messages, userMessage, botResponse]);
