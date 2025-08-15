@@ -13,6 +13,7 @@ export default function Home() {
   ]);
   const [inputText, setInputText] = useState("");
   const [isClient, setIsClient] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   // Helper function to get clean timestamp
   const getCleanTimestamp = () => {
@@ -38,8 +39,8 @@ export default function Home() {
     ]);
   }, []);
 
-  const sendMessage = () => {
-    if (inputText.trim() === "") return;
+  const sendMessage = async () => {
+    if (inputText.trim() === "" || isLoading) return;
 
     // Add user message
     const userMessage = {
@@ -49,16 +50,43 @@ export default function Home() {
       timestamp: getCleanTimestamp()
     };
 
-    // Simple bot response
-    const botResponse = {
-      id: messages.length + 2,
-      text: "Thank you for your message. I'm analyzing your symptoms. Can you tell me more about how you're feeling?",
-      sender: "bot",
-      timestamp: getCleanTimestamp()
-    };
-
-    setMessages([...messages, userMessage, botResponse]);
+    setMessages(prev => [...prev, userMessage]);
+    const currentInput = inputText;
     setInputText("");
+    setIsLoading(true);
+
+    try {
+      // Call your API endpoint
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: currentInput }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        const botResponse = {
+          id: messages.length + 2,
+          text: data.response, // Real AI response!
+          sender: "bot",
+          timestamp: getCleanTimestamp()
+        };
+        setMessages(prev => [...prev, botResponse]);
+      } else {
+        throw new Error(data.error || 'Failed to get response');
+      }
+    } catch (error) {
+      const errorMessage = {
+        id: messages.length + 2,
+        text: "Sorry, I'm having trouble connecting right now. Please try again.",
+        sender: "bot",
+        timestamp: getCleanTimestamp()
+      };
+      setMessages(prev => [...prev, errorMessage]);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -106,6 +134,15 @@ export default function Home() {
               </div>
             </div>
           ))}
+          
+          {/* Loading indicator */}
+          {isLoading && (
+            <div className="flex justify-start">
+              <div className="bg-white text-gray-800 border px-4 py-2 rounded-lg shadow">
+                <p className="text-sm">Tribot is thinking...</p>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -119,12 +156,14 @@ export default function Home() {
             onKeyPress={handleKeyPress}
             placeholder="Describe your symptoms or ask a question..."
             className="flex-1 border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-black placeholder-gray-400"
+            disabled={isLoading}
           />
           <button
             onClick={sendMessage}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-semibold transition-colors"
+            disabled={isLoading || inputText.trim() === ""}
+            className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white px-6 py-2 rounded-lg font-semibold transition-colors"
           >
-            Send
+            {isLoading ? "..." : "Send"}
           </button>
         </div>
       </div>
