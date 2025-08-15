@@ -8,7 +8,7 @@ export default function Home() {
       id: 1,
       text: "Hello! I'm Tribot, your medical triage assistant. How can I help you today?",
       sender: "bot",
-      timestamp: new Date().toLocaleTimeString()
+      timestamp: "Just now" // Fixed: Use static text instead of dynamic time
     }
   ]);
   const [inputText, setInputText] = useState("");
@@ -21,7 +21,7 @@ export default function Home() {
       id: messages.length + 1,
       text: inputText,
       sender: "user",
-      timestamp: new Date().toLocaleTimeString()
+      timestamp: "Just now" // Fixed: Use static text
     };
 
     // Simple bot response (we'll make this smarter later)
@@ -29,7 +29,7 @@ export default function Home() {
       id: messages.length + 2,
       text: "Thank you for your message. I'm analyzing your symptoms. Can you tell me more about how you're feeling?",
       sender: "bot",
-      timestamp: new Date().toLocaleTimeString()
+      timestamp: "Just now" // Fixed: Use static text
     };
 
     setMessages([...messages, userMessage, botResponse]);
