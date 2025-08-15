@@ -1,8 +1,7 @@
-// app/api/chat/route.ts (or .js)
 import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
 
-export const runtime = "nodejs"; // avoid Edge inlining envs at build
+export const runtime = "nodejs";
 
 let _client: OpenAI | null = null;
 function getClient() {
@@ -12,13 +11,12 @@ function getClient() {
   const apiVersion = process.env.AZURE_OPENAI_API_VERSION;
 
   if (!apiKey || !baseURL || !deployment || !apiVersion) {
-    throw new Error("Missing one of AZURE_* env vars");
+    throw new Error("Missing AZURE_* env vars");
   }
 
-  // Create only when first used (at runtime)
   if (!_client) {
     _client = new OpenAI({
-      apiKey, // still required by the SDK, but header below is used by Azure
+      apiKey,
       baseURL: `${baseURL}/openai/deployments/${deployment}`,
       defaultQuery: { "api-version": apiVersion },
       defaultHeaders: { "api-key": apiKey },
@@ -29,13 +27,16 @@ function getClient() {
 
 export async function POST(request: NextRequest) {
   try {
-    const { message } = await request.json();
+    const body = await request.json().catch(() => null);
+    const message = body?.message;
+    if (typeof message !== "string" || !message.trim()) {
+      return NextResponse.json({ error: "Invalid request: message is required" }, { status: 400 });
+    }
 
     const openai = getClient();
 
     const completion = await openai.chat.completions.create({
-      // With Azure + baseURL pointing to the deployment, model can be your deployment name:
-      model: process.env.AZURE_DEPLOYMENT_NAME || "",
+      model: process.env.AZURE_DEPLOYMENT_NAME!, // ✅ use deployment name
       messages: [
         { role: "system", content: "You are Tribot, a helpful medical triage assistant." },
         { role: "user", content: message },
@@ -47,13 +48,10 @@ export async function POST(request: NextRequest) {
       completion.choices[0]?.message?.content ?? "Sorry, I couldn't understand that.";
 
     return NextResponse.json({ response });
-  } catch (error) {
-    console.error("Azure OpenAI API Error:", error);
+  } catch (err) {
+    console.error("Azure OpenAI API Error:", err);
     return NextResponse.json(
-      {
-        error: "Failed to get AI response",
-        details: error instanceof Error ? error.message : "Unknown error",
-      },
+      { error: "Failed to get AI response" },
       { status: 500 }
     );
   }
