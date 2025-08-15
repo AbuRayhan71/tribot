@@ -13,7 +13,7 @@ export default function Home() {
     }
   ]);
   const [inputText, setInputText] = useState("");
-  const [isClient, setIsClient] = useState(false);
+  const [, setIsClient] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -85,7 +85,8 @@ export default function Home() {
       } else {
         throw new Error(data.error || 'Failed to get response');
       }
-    } catch (error) {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    } catch (_error) {
       const errorMessage = {
         id: messages.length + 2,
         text: "I apologize, but I'm experiencing technical difficulties. Please try again or seek immediate medical attention if this is urgent.",
@@ -169,7 +170,7 @@ export default function Home() {
         {/* Messages Container */}
         <div className="flex-1 p-6 overflow-y-auto">
           <div className="space-y-6">
-            {messages.map((message, index) => (
+            {messages.map((message) => (
               <div
                 key={message.id}
                 className={`flex ${message.sender === "user" ? "justify-end" : "justify-start"}`}
