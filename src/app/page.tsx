@@ -160,7 +160,7 @@ export default function Home() {
               Advanced AI-powered triage system developed at UNSW Sydney Faculty of Medicine & Health
             </p>
             <p className="text-sm text-gray-600">
-              I'll help assess your symptoms and provide guidance on the appropriate level of care needed. 
+              I will help assess your symptoms and provide guidance on the appropriate level of care needed. 
               This is not a substitute for professional medical advice.
             </p>
           </div>
