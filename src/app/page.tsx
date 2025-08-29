@@ -15,6 +15,8 @@ export default function Home() {
   const [inputText, setInputText] = useState("");
   const [, setIsClient] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Helper function to get clean timestamp
@@ -102,6 +104,88 @@ export default function Home() {
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !isLoading) {
       sendMessage();
+    }
+  };
+
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const recorder = new MediaRecorder(stream);
+      const chunks: Blob[] = [];
+
+      recorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          chunks.push(event.data);
+        }
+      };
+
+      recorder.onstop = async () => {
+        const audioBlob = new Blob(chunks, { type: 'audio/wav' });
+        await processAudio(audioBlob);
+        // Stop all tracks to release microphone
+        stream.getTracks().forEach(track => track.stop());
+      };
+
+      setMediaRecorder(recorder);
+      recorder.start();
+      setIsRecording(true);
+    } catch (error) {
+      console.error('Error starting recording:', error);
+      alert('Microphone access denied. Please allow microphone access to use voice input.');
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorder && isRecording) {
+      mediaRecorder.stop();
+      setIsRecording(false);
+    }
+  };
+
+  const processAudio = async (audioBlob: Blob) => {
+    try {
+      console.log('🎵 Processing audio blob:', {
+        size: audioBlob.size,
+        type: audioBlob.type
+      });
+
+      const formData = new FormData();
+      formData.append('audio', audioBlob, 'recording.wav');
+
+      console.log('📤 Sending audio to Whisper API...');
+
+      const response = await fetch('/api/whisper', {
+        method: 'POST',
+        body: formData,
+      });
+
+      console.log('📥 Whisper API response:', {
+        status: response.status,
+        ok: response.ok
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.transcription) {
+        console.log('✅ Transcription successful:', data.transcription);
+        setInputText(data.transcription);
+        // Auto-send the transcribed message
+        setTimeout(() => {
+          sendMessage();
+        }, 500);
+      } else {
+        console.log('❌ Transcription failed:', data);
+        throw new Error(data.error || 'Failed to transcribe audio');
+      }
+    } catch (error) {
+      console.error('❌ Error processing audio:', error);
+      const errorMessage = {
+        id: messages.length + 1,
+        text: "Sorry, I couldn't understand your voice input. Please try typing your message instead.",
+        sender: "bot",
+        timestamp: getCleanTimestamp()
+      };
+      setMessages(prev => [...prev, errorMessage]);
     }
   };
 
@@ -244,6 +328,33 @@ export default function Home() {
                 disabled={isLoading}
               />
             </div>
+            
+            {/* Voice Recording Button */}
+            <button
+              onClick={isRecording ? stopRecording : startRecording}
+              disabled={isLoading}
+              className={`px-6 py-4 rounded-xl font-semibold transition-all transform hover:scale-105 shadow-lg disabled:shadow-none disabled:cursor-not-allowed ${
+                isRecording 
+                  ? 'bg-red-600 hover:bg-red-700 text-white animate-pulse' 
+                  : 'bg-green-600 hover:bg-green-700 text-white'
+              }`}
+              title={isRecording ? 'Stop recording' : 'Start voice recording'}
+            >
+              {isRecording ? (
+                <div className="flex items-center space-x-2">
+                  <div className="w-2 h-2 bg-white rounded-full animate-ping"></div>
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4" />
+                  </svg>
+                </div>
+              ) : (
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                </svg>
+              )}
+            </button>
+            
             <button
               onClick={sendMessage}
               disabled={isLoading || inputText.trim() === ""}
